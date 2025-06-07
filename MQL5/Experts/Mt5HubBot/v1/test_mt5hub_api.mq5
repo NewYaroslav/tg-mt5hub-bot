@@ -2,7 +2,7 @@
 //|                                              test_mt5hub_api.mq5 |
 //|                                   Пример использования Mt5HubApi |
 //+------------------------------------------------------------------+
-#include <Mt5HubBot/v1/Mt5HubApi.mqh>
+#include <Mt5HubBot\v1\Mt5HubApi.mqh>
 
 input string HUB_URL     = "http://127.0.0.1:8080";
 input string SECRET_KEY  = "12345";

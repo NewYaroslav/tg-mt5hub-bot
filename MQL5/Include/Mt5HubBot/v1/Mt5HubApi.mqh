@@ -38,7 +38,7 @@
 
 #include <hmac-cpp\hmac.mqh>
 #include <hmac-cpp\hmac_utils.mqh>
-#include "libs/jason.mqh"
+#include "libs\jason.mqh"
 
 /// 
 /// Класс Mt5HubApi отвечает за взаимодействие с сервером MT5 Hub и отправку JSON-запросов.

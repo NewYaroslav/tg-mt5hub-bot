@@ -34,7 +34,7 @@ async def handle_bot_heartbeat(request: web.Request):
         return web.json_response({"ok": True, "allowed": allowed, "signature": signature})
 
     except Exception as e:
-        logger.exception("Ping error")
+        logger.exception(f"Heartbeat error: {str(e)}")
         return web.json_response({"ok": False, "error": str(e)}, status=400)
 
 async def handle_balance_report(request: web.Request):
@@ -82,6 +82,7 @@ async def handle_bot_signal(request):
 
         data = json.loads(body)
         if not isinstance(data, list):
+            logger.error(f"Bot signal error: expected list of signals")
             return web.json_response({"ok": False, "error": "expected list of signals"}, status=400)
 
         for signal in data:
@@ -91,4 +92,5 @@ async def handle_bot_signal(request):
         return web.json_response({"ok": True, "signature": signature})
 
     except Exception as e:
+        logger.exception(f"Bot signal error: {str(e)}")
         return web.json_response({"ok": False, "error": str(e)}, status=400)

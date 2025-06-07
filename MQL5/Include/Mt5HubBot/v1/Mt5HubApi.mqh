@@ -50,9 +50,9 @@ public:
 	Mt5HubApi() {
 		m_bot_id = 0;
 		m_login = AccountInfoInteger(ACCOUNT_LOGIN);
-		m_timeout = 5000;
+		m_timeout = 5;
 		m_broker = AccountInfoString(ACCOUNT_COMPANY);
-		m_max_leverage = (int)get_max_leverage();
+		m_max_leverage = get_max_leverage();
 	}
 	
 	/// Параметризованный конструктор
@@ -60,14 +60,14 @@ public:
 			const string& server_url,
 			const string& secret_key, 
 			int bot_id, 
-			int timeout = 5000) {
+			int timeout = 5) {
 		m_server_url = server_url;
 		m_secret_key = secret_key;
 		m_bot_id = bot_id;
 		m_login = AccountInfoInteger(ACCOUNT_LOGIN);
 	    m_timeout = timeout;
 		m_broker = AccountInfoString(ACCOUNT_COMPANY);
-		m_max_leverage = (int)get_max_leverage();
+		m_max_leverage = get_max_leverage();
 	}
 	
 	~Mt5HubApi() {};
@@ -83,10 +83,10 @@ public:
     double calc_total_profit();
 
     /// Получает максимальное плечо для символа
-    double get_max_leverage(const string &symbol);
+    int get_max_leverage(const string &symbol);
 
     /// Находит наибольшее плечо среди всех доступных символов
-    double get_max_leverage();
+    int get_max_leverage();
 
     /// Отправка сигнала heartbeat с указанным плечом
     bool send_heartbeat(bool &allowed, int leverage);
@@ -114,12 +114,15 @@ private:
     long m_login;          ///< Логин трейдера
     int m_timeout;         ///< Таймаут запроса
     int m_max_leverage;    ///< Плечо по умолчанию
+    
+    /// Возвращает коэффициент пересчёта из валюты контракта в валюту депозита
+    double get_leverage_factor(const string& symbol);
 	
 	/// Десериализация JSON и проверка ok=true
 	bool parse_response_and_check_ok(const string &result_body, CJAVal &js);
 
 	/// Генерация HMAC по текущим данным
-	string generate_signature(datetime timestamp, const string &body);
+	string generate_signature(long time_bucket, const string &body);
 	
 	/// Вспомогательная функция для проверки подписи
 	bool verify_signature(const string &sig, const string &body);
@@ -130,6 +133,7 @@ private:
         string &result_headers,
 		const string &endpoint,
         const string &request_body);
+
 };
 
 void Mt5HubApi::set_server_url(const string& server_url) {
@@ -165,7 +169,9 @@ bool Mt5HubApi::send_heartbeat(bool &allowed, int leverage) {
     string result_headers;
 
 	const string endpoint = "/api/v1/bot/heartbeat";
-	const string request_body = json.ToStr();
+	string request_body;
+	json.Serialize(request_body);
+
 	if (post_request(result_body, result_headers, endpoint, request_body)) {
 		CJAVal js(NULL, jtUNDEF);
 		if (!parse_response_and_check_ok(result_body, js)) {
@@ -181,7 +187,7 @@ bool Mt5HubApi::send_heartbeat(bool &allowed, int leverage) {
 
 		if (js.FindKey("signature")) {
 			string sig = js["signature"].ToStr();
-			if (verify_signature(sig, result_body))
+			if (verify_signature(sig, ""))
 				return true;
 		}
 	}
@@ -205,7 +211,9 @@ bool Mt5HubApi::send_balance(
     string result_headers;
 
 	const string endpoint = "/api/v1/bot/balance";
-	const string request_body = json.ToStr();
+	string request_body;
+	json.Serialize(request_body);
+
 	if (post_request(result_body, result_headers, endpoint, request_body)) {
 		CJAVal js(NULL, jtUNDEF);
         if (!parse_response_and_check_ok(result_body, js)) {
@@ -214,7 +222,7 @@ bool Mt5HubApi::send_balance(
 
 		if (js.FindKey("signature")) {
 			string sig = js["signature"].ToStr();
-			if (verify_signature(sig, result_body))
+			if (verify_signature(sig, ""))
 				return true;
 		}
 	}
@@ -236,17 +244,22 @@ bool Mt5HubApi::send_signal(
 		int direction,
 		long timestamp_ms) {
 	CJAVal json;
-	json["symbol"] = symbol;
-	json["spread"] = IntegerToString(spread);
-	json["volume"] = DoubleToString(volume,2);
-	json["direction"] = IntegerToString(direction);
-	json["timestamp"] = timestamp_ms;
+	CJAVal obj(jtOBJ, "");
+	obj["symbol"] = symbol;
+	obj["spread"] = spread;
+	obj["volume"] = NormalizeDouble(volume,2);
+	obj["direction"] = direction;
+	obj["timestamp"] = timestamp_ms;
 	
 	string result_body;
     string result_headers;
 
 	const string endpoint = "/api/v1/bot/signal";
-	const string request_body = json.ToStr();
+	string request_body;
+	json.Clear(jtARRAY);
+    json.Add(obj);
+	json.Serialize(request_body);
+
 	if (post_request(result_body, result_headers, endpoint, request_body)) {
 		if (!parse_response_and_check_ok(result_body, json)) {
 			return false;
@@ -254,7 +267,7 @@ bool Mt5HubApi::send_signal(
 
 		if (json.FindKey("signature")) {
 			string sig = json["signature"].ToStr();
-			if (verify_signature(sig, result_body))
+			if (verify_signature(sig, ""))
 				return true;
 		}
 	}
@@ -300,7 +313,19 @@ double Mt5HubApi::calc_total_profit() {
     return total_profit;
 }
 
-double Mt5HubApi::get_max_leverage(const string& symbol) {
+int Mt5HubApi::get_max_leverage(const string& symbol) {
+    double contract_size = 0.0;
+    if (!SymbolInfoDouble(symbol, SYMBOL_TRADE_CONTRACT_SIZE, contract_size) || contract_size <= 0.0) {
+        Print("Failed to get contract size for symbol: ", symbol);
+        return -1.0;
+    }
+    
+    double margin_initial = 0.0;
+    if (SymbolInfoDouble(symbol, SYMBOL_MARGIN_INITIAL, margin_initial) && margin_initial > 0.0) {
+        double leverage = contract_size / margin_initial;
+        return (int)leverage;
+    }
+    
     double price = 0.0;
     if (!SymbolInfoDouble(symbol, SYMBOL_ASK, price) || price <= 0.0) {
         Print("Failed to get price for symbol: ", symbol);
@@ -308,33 +333,64 @@ double Mt5HubApi::get_max_leverage(const string& symbol) {
     }
 
     double lot = 1.0;
-    double contract_size = 0.0;
-    if (!SymbolInfoDouble(symbol, SYMBOL_TRADE_CONTRACT_SIZE, contract_size) || contract_size <= 0.0) {
-        Print("Failed to get contract size for symbol: ", symbol);
-        return -1.0;
-    }
-
     double margin = 0.0;
     if (!OrderCalcMargin(ORDER_TYPE_BUY, symbol, lot, price, margin) || margin <= 0.0) {
         Print("OrderCalcMargin failed for symbol: ", symbol, " | Error: ", GetLastError());
         return -1.0;
     }
 
-    double notional = price * lot * contract_size;
-    double leverage = notional / margin;
-    return NormalizeDouble(leverage, 2);  // округление до двух знаков
+    double position_value = lot * contract_size * get_leverage_factor(symbol);
+    double leverage = position_value / margin;
+
+    return (int)(leverage + 0.5);
 }
 
-double Mt5HubApi::get_max_leverage() {
-	double max_leverage = 0;
+int Mt5HubApi::get_max_leverage() {
+	int max_leverage = 0;
 	for (int i = SymbolsTotal(true) - 1; i >= 0; --i) {
         string symbol = SymbolName(i, true);
-		double leverage = get_max_leverage();
+		int leverage = get_max_leverage(symbol);
 		if (leverage > max_leverage) {
 			max_leverage = leverage;
 		}
 	}
 	return max_leverage;
+}
+
+double Mt5HubApi::get_leverage_factor(const string& symbol) {
+    string base_currency   = StringSubstr(symbol, 0, 3);
+    string quote_currency  = StringSubstr(symbol, 3);
+    string deposit_currency = AccountInfoString(ACCOUNT_CURRENCY);
+
+    // Если валюта контракта совпадает с валютой депозита — ничего пересчитывать не нужно
+    if (base_currency == deposit_currency)
+        return 1.0;
+
+    // Если котируемая валюта контракта совпадает с валютой депозита — используем текущую цену
+    if (quote_currency == deposit_currency) {
+        double ask = SymbolInfoDouble(symbol, SYMBOL_ASK);
+        if (ask > 0)
+            return ask;
+    }
+
+    // Пробуем найти кросс-курс: например, если контракт AUDUSD, а депозит в JPY
+    string cross1 = base_currency + deposit_currency; // AUDJPY
+    string cross2 = deposit_currency + base_currency; // JPYAUD
+
+    if (SymbolSelect(cross1, true)) {
+        double ask = SymbolInfoDouble(cross1, SYMBOL_ASK);
+        if (ask > 0)
+            return ask;
+    }
+
+    if (SymbolSelect(cross2, true)) {
+        double ask = SymbolInfoDouble(cross2, SYMBOL_ASK);
+        if (ask > 0)
+            return 1.0 / ask;
+    }
+
+    Print("get_leverage_factor: unable to resolve exchange rate for ", base_currency, " -> ", deposit_currency);
+    return 1.0; // fallback (худший случай — ошибочное значение)
 }
 
 bool Mt5HubApi::parse_response_and_check_ok(const string &result_body, CJAVal &js) {
@@ -352,8 +408,8 @@ bool Mt5HubApi::parse_response_and_check_ok(const string &result_body, CJAVal &j
     return true;
 }
 
-string Mt5HubApi::generate_signature(datetime timestamp, const string &body) {
-	string payload = IntegerToString(m_bot_id) + ":" + IntegerToString(m_login) + ":" + IntegerToString(timestamp / 60) + ":" + body;
+string Mt5HubApi::generate_signature(long time_bucket, const string &body) {
+	string payload = IntegerToString(m_bot_id) + ":" + IntegerToString(m_login) + ":" + IntegerToString(time_bucket) + ":" + body;
 	return hmac::get_hmac(
         m_secret_key,
         payload,
@@ -362,10 +418,10 @@ string Mt5HubApi::generate_signature(datetime timestamp, const string &body) {
 
 bool Mt5HubApi::verify_signature(const string &sig, const string &body) {
     const datetime timestamp = TimeGMT();
-	for (long offset = -60; offset <= 60; ++offset) {
-        string calc_sig = generate_signature(timestamp + offset, body);
-        if (sig == calc_sig)
-            return true;
+    const long bucket = timestamp / 60;
+	for (long offset = -1; offset <= 1; ++offset) {
+        string calc_sig = generate_signature(bucket + offset, body);
+        if (sig == calc_sig) return true;
     }
     return false;
 }
@@ -376,12 +432,13 @@ bool Mt5HubApi::post_request(
 		const string &endpoint,
         const string &request_body) {
     //--- Временная метка
-	datetime timestamp = TimeGMT();
-
+	const datetime timestamp = TimeGMT();
+    const long time_bucket = timestamp / 60;
+    
     //--- Формируем HMAC-подпись
-    string sig = generate_signature(timestamp, request_body);
+    string sig = generate_signature(time_bucket, request_body);
 	
-	string payload = IntegerToString(m_bot_id) + ":" + IntegerToString(m_login) + ":" + IntegerToString(timestamp / 60) + ":" + request_body;
+	string payload = IntegerToString(m_bot_id) + ":" + IntegerToString(m_login) + ":" + IntegerToString(time_bucket) + ":" + request_body;
 	hmac::get_hmac(
         m_secret_key,
         payload,

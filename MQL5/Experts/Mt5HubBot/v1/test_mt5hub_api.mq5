@@ -4,8 +4,8 @@
 //+------------------------------------------------------------------+
 #include <Mt5HubBot/v1/Mt5HubApi.mqh>
 
-input string HUB_URL     = "http://localhost:8080";
-input string SECRET_KEY  = "test-secret-key";
+input string HUB_URL     = "http://127.0.0.1:8080";
+input string SECRET_KEY  = "12345";
 input int    BOT_ID      = 1;
 input int    INTERVAL_SEC = 30; // Интервал отправки (сек)
 
@@ -16,7 +16,7 @@ datetime last_sent = 0;
 //| Expert initialization function                                   |
 //+------------------------------------------------------------------+
 int OnInit() {
-    api = Mt5HubApi(HUB_URL, SECRET_KEY, BOT_ID);
+    api = Mt5HubApi(HUB_URL, SECRET_KEY, BOT_ID, 5000);
     EventSetTimer(1); // Проверка каждую секунду
     return INIT_SUCCEEDED;
 }
@@ -32,7 +32,7 @@ void OnDeinit(const int reason) {
 //| Expert timer function                                            |
 //+------------------------------------------------------------------+
 void OnTimer() {
-    datetime now = TimeCurrent();
+    datetime now = TimeGMT();
     if (now - last_sent < INTERVAL_SEC)
         return;
 

@@ -6,7 +6,7 @@ from collections import defaultdict
 from typing import List, Dict, Callable
 from datetime import datetime
 from modules.template_engine import render_template
-from modules.config import ADMIN_CHAT_ID, FORWARD_CHAT_IDS, get_message_batch_delay_sec
+from modules.config import ADMIN_CHAT_ID, FORWARD_CHAT_IDS, get_message_batch_delay_sec, get_total_balance_offset, get_total_profit_offset
 from modules.bot_registry import list_all_bots, update_max_spread
 from modules.storage import db_add_balance_record
 from modules.logging_config import logger

@@ -3,6 +3,7 @@
 import os
 import asyncio
 import colorlog
+from datetime import datetime
 from dotenv import load_dotenv
 from telegram import BotCommand
 from telegram.ext import Application, ApplicationBuilder, CommandHandler, MessageHandler, CallbackQueryHandler, ContextTypes, filters
@@ -14,7 +15,7 @@ from modules.storage import db_init
 from modules.config import TG_BOT_TOKEN, telegram_menu
 from modules.log_utils import log_async_call, log_sync_call
 from modules.logging_config import logger
-from modules.telegram_utils import init_bot
+from modules.telegram_utils import init_bot, send_admin_message
 from modules.http_server import start_http_server
 from modules.bot_registry import initialize_bots, periodic_disconnect_check
 
@@ -48,6 +49,12 @@ async def post_init(app: Application):
         background_tasks.append(http_runner)
     except Exception as e:
         logger.exception("Failed to start HTTP server")
+        
+    try:
+        text = render_template("startup_notification.txt", now=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+        await send_admin_message(text)
+    except Exception as e:
+        logger.warning(f"Failed to send startup notification: {e}")
 
 # Запуск
 @log_sync_call

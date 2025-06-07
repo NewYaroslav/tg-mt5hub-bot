@@ -62,3 +62,17 @@ async def send_bot_connection_report(bots_raw: dict, chat_id: int = ADMIN_CHAT_I
         logger.info(f"Connection status report sent to chat {chat_id}")
     except Exception as e:
         logger.exception(f"Failed to send connection report: {e}")
+		
+async def send_admin_message(text: str, chat_id: int = ADMIN_CHAT_ID):
+    """
+    Sends a plain message to the admin chat. Used for hub startup, errors, etc.
+    """
+    if not _bot_instance:
+        logger.error("Cannot send admin message — bot instance is not initialized")
+        return
+
+    try:
+        await _bot_instance.send_message(chat_id=chat_id, text=text, parse_mode="HTML")
+        logger.info(f"Admin message sent to chat {chat_id}")
+    except Exception as e:
+        logger.exception(f"Failed to send admin message to chat {chat_id}: {e}")

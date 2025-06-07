@@ -1,0 +1,5 @@
+🟢 <b>MT5 Hub started</b>
+
+Startup time: {{ now }}
+
+Ready to accept requests from bots.

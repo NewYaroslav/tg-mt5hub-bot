@@ -50,7 +50,7 @@ public:
 	Mt5HubApi() {
 		m_bot_id = 0;
 		m_login = AccountInfoInteger(ACCOUNT_LOGIN);
-		m_timeout = 5;
+		m_timeout = 5000;
 		m_broker = AccountInfoString(ACCOUNT_COMPANY);
 		m_max_leverage = get_max_leverage();
 	}
@@ -60,7 +60,7 @@ public:
 			const string& server_url,
 			const string& secret_key, 
 			int bot_id, 
-			int timeout = 5) {
+			int timeout = 5000) {
 		m_server_url = server_url;
 		m_secret_key = secret_key;
 		m_bot_id = bot_id;

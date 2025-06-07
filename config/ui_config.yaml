@@ -1,0 +1,13 @@
+telegram_menu:
+  - command: allow_trade
+    description: "▶️ Разрешить торговлю"
+  - command: block_trade
+    description: "❌ Остановить торговлю"
+  - command: balances
+    description: "📊 Узнать баланс"
+  - command: status
+    description: "📋 Статус торговли"
+  - command: help
+    description: "📃 Показать справку"
+  - command: myid
+    description: "ℹ️ Показать ID"

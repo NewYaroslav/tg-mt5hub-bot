@@ -1,0 +1,6 @@
+✅ <b>Trade allowed</b>
+
+{% for b in bots -%}
+▶ Bot {{ b.bot_id }} | {{ b.broker or "N/A" }} {{ b.login or "N/A" }} | ⚖️ x{{ b.leverage or "N/A" }}
+{% endfor %}
+🗓 {{ now }}

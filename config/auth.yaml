@@ -1,0 +1,3 @@
+auth:
+  login_mismatch_threshold_sec: 10
+  max_allowed_delay_sec: 60

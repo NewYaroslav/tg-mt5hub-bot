@@ -1,0 +1,5 @@
+📡 Bot {{ bot_id }} | Login: {{ signals[0].login }} | {{ signals | length }} signal{{ "s" if signals | length > 1 else "" }}
+{% for s in signals -%}
+{{ "📈" if s.direction == 1 else "📉" }} {{ s.symbol }} {{ s.timestamp_str }} V={{ s.volume }} S={{ s.spread }}
+{% endfor %}
+🗓 {{ now }}

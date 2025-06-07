@@ -1,0 +1,10 @@
+📊 <b>Balance report</b>
+
+{% for b in bots -%}
+{{ "▶️" if b.trade_allowed else "⏸️" }} Bot {{ b.bot_id }} | {{ b.broker }} {{ b.login }}: 
+💰 Balance: {{ "%.2f"|format(b.balance) }} | 📈 Profit: {{ "%.2f"|format(b.profit) }} | ⏱ {{ b.timestamp_str }}
+{% endfor %}
+
+💰 Total balance: {{ "%.2f"|format(total_balance) }}
+📈 Total profit:  {{ "%.2f"|format(total_profit) }}
+🗓 {{ now }}

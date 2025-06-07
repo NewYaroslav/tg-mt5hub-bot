@@ -1,0 +1,13 @@
+📃 <b>Help Menu</b>
+
+This bot helps you manage and monitor MT5 trading bots in real time.  
+Below is the list of available commands:
+
+▶️ /allow_trade – Allow trading  
+❌ /block_trade – Stop trading  
+📊 /balances – Get account balance  
+📋 /status – Trading status  
+📃 /help – Show help  
+ℹ️ /myid – Show your ID
+
+🗓 {{ now }}

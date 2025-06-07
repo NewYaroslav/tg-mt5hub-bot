@@ -1,0 +1,7 @@
+📡 <b>Bot Status</b>
+
+{% for b in bots -%}
+{{ "▶️" if b.trade_allowed else "⏸️" }} Bot {{ b.bot_id }} | {{ b.broker }} {{ b.login }}: 
+{% if b.connected %}🟢 Online{% else %}🔴 Offline{% endif %} | ⚖️ x{{ b.leverage }} | spread: {{ b.max_spread }} | 🕒 {{ b.last_ping_str }}
+{% endfor %}
+🗓 {{ now }}

@@ -1,0 +1,18 @@
+👋 <b>Hello, {{ username }}!</b>
+
+This bot is used to manage and monitor MT5 trading bots.
+
+📡 <b>Registered Bots:</b>
+{% for b in bots -%}
+▫️ Bot {{ b.bot_id }} | {{ b.broker }} {{ b.login }} | ⚖️ x{{ b.leverage }}
+{% endfor %}
+
+📌 <b>Available Commands:</b>
+▶️ /allow_trade – Allow trading  
+❌ /block_trade – Stop trading  
+📊 /balances – Get account balance  
+📋 /status – Trading status  
+📃 /help – Show help  
+ℹ️ /myid – Show your ID
+
+🗓 {{ now }}

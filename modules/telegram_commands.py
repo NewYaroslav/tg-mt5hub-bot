@@ -10,7 +10,7 @@ from modules.logging_config import logger
 from modules.auth_utils import is_admin, is_root_admin
 from modules.bot_registry import list_all_bots, set_trading_allowed, get_all_bot_statuses
 from modules.config import get_total_balance_offset, get_total_profit_offset
-
+from modules.storage import db_clear_balance_history, db_remove_trading_permission
 
 @log_async_call
 async def handle_balances_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -201,6 +201,29 @@ async def handle_start_command(update: Update, context: ContextTypes.DEFAULT_TYP
     now_str = datetime.now().strftime("%Y.%m.%d %H:%M:%S")
     message = render_template("start_description.txt", bots=bots, now=now_str, username=username)
     await update.message.reply_text(message, parse_mode="HTML")
+    
+@log_async_call
+async def handle_clear_db_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = update.effective_user
+
+    if not is_root_admin(user.id):
+        await update.message.reply_text(render_template("not_authorized.txt"))
+        return
+
+    args = context.args
+    if not args:
+        await update.message.reply_text(render_template("clear_db_help.txt"), parse_mode="HTML")
+        return
+
+    if "balance" in args:
+        db_clear_balance_history()
+        await update.message.reply_text("✅ Balance history has been cleared.")
+
+    if "permission" in args:
+        bots = list_all_bots()
+        for bot_id in bots:
+            db_remove_trading_permission(bot_id)
+        await update.message.reply_text("✅ All bot trading permissions have been cleared.")
 
 @log_async_call
 async def handle_help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):

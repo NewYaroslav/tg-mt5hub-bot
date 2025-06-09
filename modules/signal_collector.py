@@ -7,7 +7,7 @@ from typing import List, Dict, Callable
 from datetime import datetime
 from modules.template_engine import render_template
 from modules.config import ADMIN_CHAT_ID, FORWARD_CHAT_IDS, get_message_batch_delay_sec, get_total_balance_offset, get_total_profit_offset
-from modules.bot_registry import list_all_bots, update_max_spread
+from modules.bot_registry import list_all_bots, update_max_spread, get_all_bot_statuses  
 from modules.storage import db_add_balance_record
 from modules.logging_config import logger
 
@@ -106,8 +106,11 @@ async def _delayed_send_balance_summary(send_func: Callable):
         total_profit += get_total_profit_offset()
         total_balance = round(total_balance, 2)
         total_profit = round(total_profit, 2)
+        
+        statuses = get_all_bot_statuses()
+        all_online = all(status == 1 for status in statuses.values())
 
-        if ts_min > 0:
+        if all_online and ts_min > 0:
             db_add_balance_record(timestamp=ts_min, balance=total_balance, profit=total_profit)
 
         message = render_template(

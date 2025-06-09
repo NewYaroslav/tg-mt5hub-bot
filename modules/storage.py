@@ -1,18 +1,15 @@
 import os
 import sqlite3
-from dotenv import load_dotenv
 from modules.log_utils import log_sync_call
 from modules.logging_config import logger
-
-load_dotenv()
-DB_PATH = os.getenv("DB_PATH", "database/db.sqlite3")
+from modules.config import DB_PATH
 
 @log_sync_call
 def db_init():
     os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-	
+    
     # Таблица истории балансов и профитов
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS balance_history (
@@ -56,7 +53,21 @@ def db_get_balance_history(start_ts: int = None, end_ts: int = None):
     rows = cursor.fetchall()
     conn.close()
     return rows
-	
+    
+@log_sync_call
+def db_get_latest_balance_record():
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT timestamp, profit, balance
+        FROM balance_history
+        ORDER BY timestamp DESC
+        LIMIT 1
+    """)
+    row = cursor.fetchone()
+    conn.close()
+    return row  # (timestamp, profit, balance) or None
+    
 @log_sync_call
 def db_clear_balance_history():
     conn = sqlite3.connect(DB_PATH)
@@ -81,7 +92,7 @@ def db_get_trading_permission(bot_id: int) -> int:
     row = cursor.fetchone()
     conn.close()
     return row[0] if row else 1  # По умолчанию разрешено
-	
+    
 @log_sync_call
 def db_remove_trading_permission(bot_id: int):
     conn = sqlite3.connect(DB_PATH)

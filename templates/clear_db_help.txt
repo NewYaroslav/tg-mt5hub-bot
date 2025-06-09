@@ -1,0 +1,5 @@
+ℹ️ <b>Usage:</b>
+/clear_db balance — clear balance history
+/clear_db permission — clear all bot trading permissions
+
+⚠️ Only use if you understand the consequences.

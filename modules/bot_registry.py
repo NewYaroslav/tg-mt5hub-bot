@@ -109,7 +109,7 @@ async def periodic_disconnect_check():
                 changed = True
 
         if changed:
-            schedule_status_report()
+            await schedule_status_report()
 
 # --- balance
 

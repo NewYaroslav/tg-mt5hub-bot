@@ -9,5 +9,5 @@ Below is the list of available commands:
 📋 /status – Trading status  
 📃 /help – Show help  
 ℹ️ /myid – Show your ID
-
-🗓 {{ now }}
+🛠 /clear_db balance — clear balance history
+🛠 /clear_db permission — clear all bot trading permissions

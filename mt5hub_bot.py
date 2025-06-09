@@ -3,14 +3,27 @@
 import os
 import asyncio
 import colorlog
+
 from datetime import datetime
-from dotenv import load_dotenv
 from telegram import BotCommand
-from telegram.ext import Application, ApplicationBuilder, CommandHandler, MessageHandler, CallbackQueryHandler, ContextTypes, filters
+from telegram.ext import (
+    Application,
+    ApplicationBuilder,
+    CommandHandler,
+)
 from jinja2 import Environment, FileSystemLoader
 from rich.console import Console
 from modules.template_engine import render_template
-from modules.telegram_commands import handle_balances_command, handle_status_command, handle_allow_trade_command, handle_block_trade_command, handle_start_command, handle_help_command, handle_my_id_command
+from modules.telegram_commands import (
+    handle_balances_command,
+    handle_status_command,
+    handle_allow_trade_command,
+    handle_block_trade_command,
+    handle_start_command,
+    handle_help_command,
+    handle_my_id_command,
+    handle_clear_db_command,
+)
 from modules.storage import db_init
 from modules.config import TG_BOT_TOKEN, telegram_menu
 from modules.log_utils import log_async_call, log_sync_call
@@ -25,9 +38,13 @@ background_tasks = []
 
 @log_async_call
 async def setup_bot_commands(app: Application):
-    await app.bot.set_my_commands([
-        BotCommand(cmd["command"], cmd["description"]) for cmd in telegram_menu
-    ])
+    try:
+        commands = [BotCommand(cmd["command"], cmd["description"]) for cmd in telegram_menu]
+        await app.bot.delete_my_commands()
+        await app.bot.set_my_commands(commands)
+        logger.info(f"Bot commands set: {[cmd.command for cmd in commands]}")
+    except Exception as e:
+        logger.exception("Failed to set bot commands")
 
 @log_async_call
 async def post_init(app: Application):
@@ -74,6 +91,7 @@ def run_bot():
     app.add_handler(CommandHandler("status", handle_status_command))
     app.add_handler(CommandHandler("allow_trade", handle_allow_trade_command))
     app.add_handler(CommandHandler("block_trade", handle_block_trade_command))
+    app.add_handler(CommandHandler("clear_db", handle_clear_db_command))
     app.add_handler(CommandHandler("help", handle_help_command))
     app.add_handler(CommandHandler("myid", handle_my_id_command))
 

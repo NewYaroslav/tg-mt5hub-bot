@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 # Загрузка переменных из .env
 load_dotenv()
 
+DB_PATH = os.getenv("DB_PATH", "database/db.sqlite3")
 TG_BOT_TOKEN = os.getenv("TG_BOT_TOKEN")
 ROOT_ADMIN_ID = int(os.getenv("ROOT_ADMIN_ID", 0))
 ADMIN_CHAT_ID = int(os.getenv("ADMIN_CHAT_ID", 0))
@@ -15,6 +16,7 @@ FORWARD_CHAT_IDS = [
     int(x.strip()) for x in os.getenv("FORWARD_CHAT_IDS", "").split(",") if x.strip().isdigit()
 ]
 MT5_SECRET_KEY = os.getenv("MT5_SECRET_KEY")
+BALANCE_API_KEY = os.getenv("BALANCE_API_KEY")
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
 
 # --- UI config

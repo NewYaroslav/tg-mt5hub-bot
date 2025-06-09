@@ -1,0 +1,38 @@
+#!/bin/bash
+
+SERVICE_NAME="mt5hub-bot"
+PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+function usage() {
+    echo "Usage: $0 [start|stop|restart|status|logs|test]"
+    exit 1
+}
+
+case "$1" in
+  start)
+    echo "[*] Starting $SERVICE_NAME..."
+    sudo systemctl start "$SERVICE_NAME"
+    ;;
+  stop)
+    echo "[*] Stopping $SERVICE_NAME..."
+    sudo systemctl stop "$SERVICE_NAME"
+    ;;
+  restart)
+    echo "[*] Restarting $SERVICE_NAME..."
+    sudo systemctl restart "$SERVICE_NAME"
+    ;;
+  status)
+    sudo systemctl status "$SERVICE_NAME"
+    ;;
+  logs)
+    journalctl -u "$SERVICE_NAME" -f
+    ;;
+  test)
+    echo "[*] Running bot manually (dev mode)..."
+    source "$PROJECT_DIR/venv/bin/activate"
+    python "$PROJECT_DIR/mt5hub_bot.py"
+    ;;
+  *)
+    usage
+    ;;
+esac

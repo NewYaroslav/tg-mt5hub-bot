@@ -40,8 +40,13 @@ background_tasks = []
 async def setup_bot_commands(app: Application):
     try:
         commands = [BotCommand(cmd["command"], cmd["description"]) for cmd in telegram_menu]
-        await app.bot.delete_my_commands()
+        
+        for lang in [None, "ru", "en"]:
+            await app.bot.delete_my_commands(language_code=lang)
+            logger.info(f"Deleted bot commands for language: {lang or 'default'}")
+            
         await app.bot.set_my_commands(commands)
+        
         logger.info(f"Bot commands set: {[cmd.command for cmd in commands]}")
     except Exception as e:
         logger.exception("Failed to set bot commands")

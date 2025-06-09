@@ -127,6 +127,20 @@ sudo systemctl status mt5hub-bot
 
 ### ⚙️ Управление ботом через `mt5hubctl`
 
+Чтобы сделать CLI-обёртку `mt5hubctl` исполняемой:
+
+```bash
+chmod +x mt5hubctl
+```
+
+После этого можно использовать команды:
+
+```bash
+./mt5hubctl start
+./mt5hubctl status
+./mt5hubctl dev
+```
+
 Удобный CLI-интерфейс для управления:
 
 ```bash

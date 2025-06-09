@@ -458,7 +458,7 @@ bool Mt5HubApi::post_request(
     StringToCharArray(request_body, request_data, 0, request_data_size);
 
     //--- Буфер результата
-    uchar result[];
+    char result[];
 
     //--- Отправка запроса
 	string full_url = m_server_url + endpoint;
@@ -477,7 +477,8 @@ bool Mt5HubApi::post_request(
 	int start_index=0;
 	int size = ArraySize(result);
 	for(int i = 0; i < fmin(size, 8); ++i) {
-		if(result[i] == 0xef || result[i] == 0xbb || result[i] == 0xbf) {
+		uchar byte = (uchar)result[i];
+		if(byte == 0xef || byte == 0xbb || byte == 0xbf) {
 			start_index = i + 1;
 		} else {
 			break;

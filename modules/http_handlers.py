@@ -9,9 +9,8 @@ from datetime import datetime
 from modules.http_auth import verify_signature, generate_signature
 from modules.telegram_utils import send_signal_report
 from modules.logging_config import logger
-from modules.bot_registry import update_heartbeat, is_trading_allowed, update_balance
+from modules.bot_registry import update_heartbeat, is_trading_allowed, update_balance, collect_signal
 from modules.config import get_bot_ids, MT5_SECRET_KEY, BALANCE_API_KEY
-from modules.signal_collector import collect_all_balances, collect_signal
 from modules.storage import db_get_latest_balance_record
 
 async def handle_bot_heartbeat(request: web.Request):
@@ -30,7 +29,7 @@ async def handle_bot_heartbeat(request: web.Request):
         broker = data.get("broker")
         leverage = data.get("leverage")
 
-        await update_heartbeat(bot_id, login=login, broker=broker, leverage=leverage)
+        update_heartbeat(bot_id, login=login, broker=broker, leverage=leverage)
         allowed = is_trading_allowed(bot_id)
         logger.debug(f"Ping received from bot {bot_id}, allowed={allowed}")
         signature = generate_signature(MT5_SECRET_KEY, bot_id, login, int(time.time()), body="")
@@ -56,13 +55,7 @@ async def handle_balance_report(request: web.Request):
         balance = float(data.get("balance", 0))
         profit = float(data.get("profit", 0))
         
-        changed = update_balance(bot_id, balance, profit)
-
-        if changed:
-            collect_all_balances(send_signal_report)
-            logger.debug(f"Bot {bot_id} updated balance: {balance}, profit: {profit}")
-        else:
-            logger.debug(f"Bot {bot_id} balance unchanged")
+        update_balance(bot_id, balance, profit)
 
         signature = generate_signature(MT5_SECRET_KEY, bot_id, login, int(time.time()), body="")
         return web.json_response({"ok": True, "signature": signature})

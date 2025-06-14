@@ -286,25 +286,75 @@ bool Mt5HubApi::send_signal(
 }
 
 double Mt5HubApi::calc_total_profit() {
+    const int max_attempts = 5;
+    const int delay_ms = 100;
+    datetime now = TimeCurrent();
     double total_profit = 0.0;
-    if(!HistorySelect(0, TimeCurrent())) {
-        Print("Ошибка при выборе истории сделок!");
+    
+    // Повторные попытки HistorySelect
+    bool success = false;
+    for (int attempt = 0; attempt < max_attempts; ++attempt) {
+        if (HistorySelect(0, now)) {
+            success = true;
+            break;
+        }
+        Sleep(delay_ms);
+    }
+    if (!success) {
+        Print(__FUNCTION__, ": failed to select history after ", max_attempts, " attempts.");
         return 0.0;
     }
-    int deals_total = HistoryDealsTotal(); // Получаем количество сделок
-    for(int i = 0; i < deals_total; i++) {
-        // Получаем номер сделки по индексу
-        ulong deal_ticket = HistoryDealGetTicket(i);
-        const int enty_type = (int)HistoryDealGetInteger(deal_ticket, DEAL_TYPE);
-        if (enty_type == DEAL_TYPE_BALANCE) continue;
-        if (enty_type == DEAL_TYPE_CREDIT) continue;
-        if (enty_type == DEAL_TYPE_BONUS) continue;
-        if (enty_type == DEAL_TYPE_CORRECTION) continue;
 
-        // Получаем прибыль, комиссию и свопы по сделке в валюте депозита
-        double profit = HistoryDealGetDouble(deal_ticket, DEAL_PROFIT);
-        double commission = HistoryDealGetDouble(deal_ticket, DEAL_COMMISSION);
-        double swap = HistoryDealGetDouble(deal_ticket, DEAL_SWAP);
+    int deals_total = HistoryDealsTotal(); // Получаем количество сделок
+  
+    for(int i = 0; i < deals_total; i++) {
+        ulong deal_ticket = 0;
+        for (int attempt = 0; attempt < max_attempts; ++attempt) {
+            deal_ticket = HistoryDealGetTicket(i);
+            if (deal_ticket != 0) break;
+            Sleep(delay_ms);
+        }
+        if (deal_ticket == 0) {
+            Print(__FUNCTION__, ": failed to get deal ticket at index ", i);
+            continue;
+        }
+        
+        // Получаем номер сделки по индексу
+        const int enty_type = (int)HistoryDealGetInteger(deal_ticket, DEAL_TYPE);
+        if (enty_type == DEAL_TYPE_BALANCE ||
+            enty_type == DEAL_TYPE_CREDIT ||
+            enty_type == DEAL_TYPE_BONUS ||
+            enty_type == DEAL_TYPE_CORRECTION)
+            continue;
+            
+        double profit = 0.0, commission = 0.0, swap = 0.0;
+        bool deal_ok = false;
+        
+        // Получаем прибыль, комиссию и свопы по сделке в валюте депозита с повторными попытками
+        for (int attempt = 0; attempt < max_attempts; ++attempt) {
+            profit     = HistoryDealGetDouble(deal_ticket, DEAL_PROFIT);
+            commission = HistoryDealGetDouble(deal_ticket, DEAL_COMMISSION);
+            swap       = HistoryDealGetDouble(deal_ticket, DEAL_SWAP);
+            if (!MathIsValidNumber(profit)) {
+                Sleep(delay_ms);
+                continue;
+            }
+            if (!MathIsValidNumber(commission)) {
+                Sleep(delay_ms);
+                continue;
+            }
+            if (!MathIsValidNumber(swap)) {
+                Sleep(delay_ms);
+                continue;
+            }
+            deal_ok = true;
+            break;
+        }
+        
+        if (!deal_ok) {
+            Print(__FUNCTION__, ": failed to get profit data for deal ", deal_ticket);
+            return 0.0;
+        }
 
         // Суммируем прибыль, вычитая комиссию и свопы
         total_profit += (profit + commission + swap);

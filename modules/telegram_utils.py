@@ -1,11 +1,18 @@
 # telegram_utils.py
 
 import logging
+from typing import Dict, List
 from telegram import Bot
-from modules.logging_config import logger
-from modules.config import ADMIN_CHAT_ID
-from modules.template_engine import render_template
 from datetime import datetime
+from modules.logging_config import logger
+from modules.config import ADMIN_CHAT_ID, FORWARD_CHAT_IDS
+from modules.template_engine import (
+    render_template, 
+    render_bot_connection_report, 
+    render_bot_balance_report, 
+    render_bot_signal_report, 
+    render_signal_batch_report,
+)
 
 _bot_instance: Bot = None  # Инициализируется через init
 
@@ -29,40 +36,35 @@ async def send_signal_report(chat_id: int, text: str):
     except Exception as e:
         logger.exception(f"Failed to send signal report to admin chat {chat_id}: {e}")
         
-async def send_bot_connection_report(bots_raw: dict, chat_id: int = ADMIN_CHAT_ID):
-    """
-    Принимает dict[int, dict] из list_all_bots() и сам обогащает данными.
-    """
-    bots = []
-    for bot_id, entry in bots_raw.items():
-        last_ping = entry.get("last_ping")
-        last_ping_str = (
-            datetime.fromtimestamp(last_ping).strftime("%Y.%m.%d %H:%M:%S")
-            if last_ping else "—"
-        )
+async def send_report_to_chats(text: str, chat_ids: list[int]):
+    logger.debug(f"Sending report to {len(chat_ids)} chats.")
+    for chat_id in chat_ids:
+        try:
+            await _bot_instance.send_message(chat_id=chat_id, text=text, parse_mode="HTML")
+            logger.info(f"Report sent to chat {chat_id}")
+        except Exception as e:
+            logger.exception(f"Failed to send report to chat {chat_id}: {e}")
+            
+async def send_bot_connection_report(bots_raw: dict, chat_ids: list[int] = None):
+    if chat_ids is None:
+        chat_ids = [ADMIN_CHAT_ID] + FORWARD_CHAT_IDS
+    text = render_bot_connection_report(bots_raw)
+    await send_report_to_chats(text, chat_ids)
+    
+async def send_bot_balance_report(bots_raw: dict, chat_ids: list[int] = None):
+    if chat_ids is None:
+        chat_ids = [ADMIN_CHAT_ID] + FORWARD_CHAT_IDS
 
-        bots.append({
-            "bot_id": bot_id,
-            "connected": entry.get("connected", 0),
-            "login": entry.get("login", "N/A"),
-            "broker": entry.get("broker", "N/A"),
-            "leverage": entry.get("leverage", "N/A"),
-            "max_spread": entry.get("max_spread", "N/A"),
-            "trade_allowed": entry.get("trade_allowed", True),
-            "last_ping_str": last_ping_str,
-        })
+    text = render_bot_balance_report(bots_raw)
+    await send_report_to_chats(text, chat_ids)
 
-    if not bots:
-        message = "ℹ️ <b>No bot data.</b>"
-    else:
-        message = render_template("all_bot_status.txt", bots=bots, now=datetime.now().strftime("%Y.%m.%d %H:%M:%S"))
+async def send_bot_signal_report_batch(batch: Dict[int, List[dict]], chat_ids: list[int] = None):
+    if chat_ids is None:
+        chat_ids = [ADMIN_CHAT_ID] + FORWARD_CHAT_IDS
+    
+    text = render_signal_batch_report(batch)
+    await send_report_to_chats(text, chat_ids)
 
-    try:
-        await _bot_instance.send_message(chat_id=chat_id, text=message, parse_mode="HTML")
-        logger.info(f"Connection status report sent to chat {chat_id}")
-    except Exception as e:
-        logger.exception(f"Failed to send connection report: {e}")
-		
 async def send_admin_message(text: str, chat_id: int = ADMIN_CHAT_ID):
     """
     Sends a plain message to the admin chat. Used for hub startup, errors, etc.

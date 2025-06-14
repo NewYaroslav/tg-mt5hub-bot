@@ -30,7 +30,7 @@ from modules.log_utils import log_async_call, log_sync_call
 from modules.logging_config import logger
 from modules.telegram_utils import init_bot, send_admin_message
 from modules.http_server import start_http_server
-from modules.bot_registry import initialize_bots, periodic_disconnect_check
+from modules.bot_registry import initialize_bots, status_change_reporter
 
 # Консоль и логгер
 console = Console()
@@ -61,9 +61,9 @@ async def post_init(app: Application):
     initialize_bots()
 
     # Проверка отключений ботов
-    disconnect_task = asyncio.create_task(periodic_disconnect_check())
+    disconnect_task = asyncio.create_task(status_change_reporter())
     background_tasks.append(disconnect_task)
-    logger.debug("Background task periodic_disconnect_check started")
+    logger.debug("Background task status_change_reporter started")
     
     # Запускаем HTTP сервер
     try:

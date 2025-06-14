@@ -11,6 +11,7 @@ from modules.auth_utils import is_admin, is_root_admin
 from modules.bot_registry import list_all_bots, set_trading_allowed, get_all_bot_statuses
 from modules.config import get_total_balance_offset, get_total_profit_offset
 from modules.storage import db_clear_balance_history, db_remove_trading_permission
+from modules.telegram_utils import send_bot_balance_report, send_bot_connection_report
 
 @log_async_call
 async def handle_balances_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -25,52 +26,7 @@ async def handle_balances_command(update: Update, context: ContextTypes.DEFAULT_
         await update.message.reply_text("❌ No balance data available.")
         return
 
-    now = datetime.now()
-    ts_min = 0
-    total_balance = 0.0
-    total_profit = 0.0
-    enriched = []
-
-    for bot_id, entry in all_data.items():
-        login = entry.get("login", "N/A")
-        broker = entry.get("broker", "N/A")
-        balance = float(entry.get("balance", 0))
-        balance = round(balance, 2)
-        profit = float(entry.get("profit", 0))
-        profit = round(profit, 2)
-        trade_allowed = entry.get("trade_allowed", False)
-        ts = entry.get("last_balance_time")
-        if ts and ts > ts_min:
-            ts_min = ts
-        timestamp_str = datetime.fromtimestamp(ts).strftime("%Y.%m.%d %H:%M:%S") if ts else "N/A"
-
-        total_balance += balance
-        total_profit += profit
-
-        enriched.append({
-            "bot_id": bot_id,
-            "login": login,
-            "balance": balance,
-            "broker": broker,
-            "profit": profit,
-            "trade_allowed": trade_allowed,
-            "timestamp_str": timestamp_str
-        })
-
-    total_balance += get_total_balance_offset()
-    total_profit += get_total_profit_offset()
-    total_balance = round(total_balance, 2)
-    total_profit = round(total_profit, 2)
-    
-    message = render_template(
-        "all_bot_balances.txt",
-        bots=enriched,
-        total_balance=total_balance,
-        total_profit=total_profit,
-        now=now.strftime("%Y.%m.%d %H:%M:%S")
-    )
-
-    await update.message.reply_text(message, parse_mode="HTML")
+    await send_bot_balance_report(all_data, chat_ids=[update.effective_chat.id])
     
 @log_async_call
 async def handle_status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -81,36 +37,11 @@ async def handle_status_command(update: Update, context: ContextTypes.DEFAULT_TY
         return
 
     all_data = list_all_bots()
-    bots = []
+    if not all_data:
+        await update.message.reply_text("ℹ️ <b>No bot data.</b>", parse_mode="HTML")
+        return
 
-    for bot_id, entry in all_data.items():
-        last_ping = entry.get("last_ping")
-        last_ping_str = (
-            datetime.fromtimestamp(last_ping).strftime("%Y.%m.%d %H:%M:%S")
-            if last_ping else "N/A"
-        )
-
-        bots.append({
-            "bot_id": bot_id,
-            "connected": entry.get("connected", 0),
-            "last_ping_str": last_ping_str,
-            "login": entry.get("login", "N/A"),
-            "broker": entry.get("broker", "N/A"),
-            "leverage": entry.get("leverage", "N/A"),
-            "max_spread": entry.get("max_spread", "N/A"),
-            "trade_allowed": entry.get("trade_allowed", True),
-        })
-
-    if not bots:
-        message = "ℹ️ <b>No bot data.</b>"
-    else:
-        message = render_template(
-            "all_bot_status.txt",
-            bots=bots,
-            now=datetime.now().strftime("%Y.%m.%d %H:%M:%S")
-        )
-
-    await update.message.reply_text(message, parse_mode="HTML")
+    await send_bot_connection_report(all_data, chat_ids=[update.effective_chat.id])
 
 @log_async_call
 async def handle_allow_trade_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
